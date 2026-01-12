@@ -4,19 +4,19 @@ use canto::{Context, FallbackWord, Word, WordParser};
 use derive_more::Display;
 
 #[derive(Debug, Default)]
-struct WordsContext {
+struct BannedWordsContext {
     pub words: Vec<String>,
 }
 
-impl Context for WordsContext {}
+impl Context for BannedWordsContext {}
 
 #[derive(Debug, Display, Default)]
-struct NormWord {
+struct SfwWord {
     text: String,
 }
 
-impl Word<WordsContext> for NormWord {
-    fn try_from_token(token: canto::Token, ctx: &mut WordsContext) -> canto::ParseResult<Self>
+impl Word<BannedWordsContext> for SfwWord {
+    fn try_from_token(token: canto::Token, ctx: &mut BannedWordsContext) -> canto::ParseResult<Self>
         where
             Self: Sized {
         canto::ParseResult::Matched(Self::from_token(token, ctx))
@@ -27,8 +27,8 @@ impl Word<WordsContext> for NormWord {
     }
 }
 
-impl FallbackWord<WordsContext> for NormWord {
-    fn from_token(token: canto::Token, ctx: &mut WordsContext) -> Self
+impl FallbackWord<BannedWordsContext> for SfwWord {
+    fn from_token(token: canto::Token, ctx: &mut BannedWordsContext) -> Self
         where
             Self: Sized {
         if ctx.words.contains(&token) {
@@ -45,8 +45,8 @@ impl FallbackWord<WordsContext> for NormWord {
 
 #[test]
 fn fallback_word() {
-    let parser = WordParser::<WordsContext, NormWord>::new();
-    let mut ctx = WordsContext {
+    let parser = WordParser::<BannedWordsContext, SfwWord>::new();
+    let mut ctx = BannedWordsContext {
         words: vec!["this".into()]
     };
 
