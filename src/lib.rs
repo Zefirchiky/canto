@@ -14,7 +14,7 @@ pub use paragraph::{Paragraph, Paragraphs};
 pub use parse_result::ParseResult;
 pub use priority::Priority;
 pub use token::Token;
-pub use word::{Word, Words};
+pub use word::{Word, FallbackWord, Words};
 pub use word_parser::WordParser;
 pub use context::{Context, EmptyContext};
 

@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::{borrow::Cow, fmt::{Debug, Display}};
 
 use derive_more::Display;
 
@@ -55,8 +55,8 @@ impl<P: Punctuation + 'static, C: Context> Word<C> for P {
         Priority::Highest
     }
 
-    fn raw_text(&self) -> &str {
-        Self::text()
+    fn raw_text(&self) -> Cow<'_, str> {
+        Self::text().into()
     }
 }
 

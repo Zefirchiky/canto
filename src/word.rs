@@ -1,4 +1,4 @@
-use std::{fmt::{Debug, Display}};
+use std::{borrow::Cow, fmt::{Debug, Display}};
 
 use derive_more::{Deref, DerefMut, Display, From};
 
@@ -31,7 +31,13 @@ pub trait Word<C: Context = EmptyContext>: Debug + Display {
         Priority::Mid
     }
 
-    fn raw_text(&self) -> &str;
+    fn raw_text(&self) -> Cow<'_, str>;
+}
+
+pub trait FallbackWord<C: Context = EmptyContext>: Word<C> {
+    fn from_token(token: Token, _ctx: &mut C) -> Self
+    where
+        Self: Sized;
 }
 
 /// The fallback
@@ -47,23 +53,30 @@ impl Normal {
 }
 
 impl<C: Context> Word<C> for Normal {
-    fn try_from_token(token: crate::Token, _ctx: &mut C) -> ParseResult<Self>
+    fn try_from_token(token: Token, ctx: &mut C) -> ParseResult<Self>
+        where
+            Self: Sized {
+        ParseResult::Matched(Self::from_token(token, ctx))
+    }
+
+    fn priority() -> Priority
+        where
+            Self: Sized, {
+        Priority::Lowest
+    }
+
+    fn raw_text(&self) -> Cow<'_, str> {
+        Cow::Borrowed(&self.text)
+    }
+}
+
+impl<C: Context> FallbackWord<C> for Normal {
+    fn from_token(token: crate::Token, _ctx: &mut C) -> Self
     where
         Self: Sized,
     {
-        ParseResult::Matched(Self {
+        Self {
             text: token.to_string(),
-        })
-    }
-
-    fn priority() -> crate::Priority
-    where
-        Self: Sized,
-    {
-        crate::Priority::Lowest
-    }
-
-    fn raw_text(&self) -> &str {
-        &self.text
+        }
     }
 }

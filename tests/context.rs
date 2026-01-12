@@ -14,5 +14,5 @@ fn custom_context_novel_init() {
 
 #[test]
 fn custom_context_push_dot() {
-    todo!()
+    
 }

@@ -4,24 +4,30 @@ use std::collections::HashMap;
 #[cfg(feature = "fxhash")]
 use fxhash::FxHashMap;
 
-use crate::{Context, EmptyContext, ParseResult, Priority, Token, Word, Words, word::Normal};
+use crate::{Context, EmptyContext, FallbackWord, ParseResult, Priority, Token, Word, Words, word::Normal};
 
 type WordConstructor<C> = fn(Token, &mut C) -> ParseResult<Box<dyn Word<C>>>;
 
-pub struct WordParser<C: Context = EmptyContext> {
+pub struct WordParser<C = EmptyContext, F = Normal>
+where
+    C: Context,
+    F: FallbackWord<C> + 'static
+{
     #[cfg(not(feature = "fxhash"))]
     parsers: HashMap<Priority, Vec<WordConstructor<C>>>,
     #[cfg(feature = "fxhash")]
     parsers: FxHashMap<Priority, Vec<WordConstructor<C>>>,
+    fallback: fn(Token, &mut C) -> F
 }
 
-impl<C: Context> WordParser<C> {
+impl<C: Context, F: FallbackWord<C>> WordParser<C, F> {
     pub fn new() -> Self {
         Self {
             #[cfg(not(feature = "fxhash"))]
             parsers: HashMap::new(),
             #[cfg(feature = "fxhash")]
             parsers: FxHashMap::default(),
+            fallback: |tok, ctx| F::from_token(tok, ctx),
         }
     }
 
@@ -75,7 +81,7 @@ impl<C: Context> WordParser<C> {
             }
 
             if current_words.is_empty() {
-                current_words.push(Box::new(Normal::new(current.to_string())));
+                current_words.push(Box::new((self.fallback)(current, ctx)));
             }
             words.append(&mut current_words);
         }
@@ -92,13 +98,13 @@ mod words_parsing {
 
     #[test]
     fn normal() {
-        let parser = WordParser::new();
+        let parser: WordParser = WordParser::new();
         assert_eq!(parser.parse("dis", &mut EmptyContext)[0].raw_text(), "dis");
     }
 
     #[test]
     fn normal_with_exclamation() {
-        let mut parser = WordParser::new();
+        let mut parser: WordParser = WordParser::new();
         parser.register::<Exclamation>();
         let res = parser.parse("dis!", &mut EmptyContext);
         assert_eq!(res[0].raw_text(), "dis");
@@ -107,7 +113,7 @@ mod words_parsing {
 
     #[test]
     fn complex() {
-        let mut parser = WordParser::new();
+        let mut parser: WordParser = WordParser::new();
         parser.register::<Exclamation>();
         parser.register::<QuestionMark>();
         let res = parser.parse("?dis!das", &mut EmptyContext);
