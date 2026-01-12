@@ -5,6 +5,7 @@ mod priority;
 mod token;
 pub mod word;
 mod word_parser;
+mod context;
 
 pub mod default_words;
 
@@ -15,18 +16,10 @@ pub use priority::Priority;
 pub use token::Token;
 pub use word::{Word, Words};
 pub use word_parser::WordParser;
+pub use context::{Context, EmptyContext};
 
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+    
 }

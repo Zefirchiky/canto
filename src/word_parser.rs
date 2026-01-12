@@ -4,18 +4,18 @@ use std::collections::HashMap;
 #[cfg(feature = "fxhash")]
 use fxhash::FxHashMap;
 
-use crate::{ParseResult, Priority, Token, Word, Words, word::Normal};
+use crate::{Context, EmptyContext, ParseResult, Priority, Token, Word, Words, word::Normal};
 
-type WordConstructor = Box<dyn Fn(Token) -> ParseResult<Box<dyn Word>>>;
+type WordConstructor<C> = fn(Token, &mut C) -> ParseResult<Box<dyn Word<C>>>;
 
-pub struct WordParser {
+pub struct WordParser<C: Context = EmptyContext> {
     #[cfg(not(feature = "fxhash"))]
-    parsers: HashMap<Priority, Vec<WordConstructor>>,
+    parsers: HashMap<Priority, Vec<WordConstructor<C>>>,
     #[cfg(feature = "fxhash")]
-    parsers: FxHashMap<Priority, Vec<WordConstructor>>,
+    parsers: FxHashMap<Priority, Vec<WordConstructor<C>>>,
 }
 
-impl WordParser {
+impl<C: Context> WordParser<C> {
     pub fn new() -> Self {
         Self {
             #[cfg(not(feature = "fxhash"))]
@@ -25,15 +25,17 @@ impl WordParser {
         }
     }
 
-    pub fn register<W: Word + 'static>(&mut self) {
+    pub fn register<W: Word<C> + 'static>(&mut self) {
         let priority = W::priority();
-        let constructor: WordConstructor = Box::new(|token| match W::try_from_token(token) {
-            ParseResult::Matched(word) => ParseResult::Matched(Box::new(word) as Box<dyn Word>),
-            ParseResult::Partial(pre, word, post) => {
-                ParseResult::Partial(pre, Box::new(word) as Box<dyn Word>, post)
+        let constructor = |token, ctx: &mut C| {
+            match W::try_from_token(token, ctx) {
+                ParseResult::Matched(word) => ParseResult::Matched(Box::new(word) as Box<dyn Word<C>>),
+                ParseResult::Partial(pre, word, post) => {
+                    ParseResult::Partial(pre, Box::new(word) as Box<dyn Word<C>>, post)
+                }
+                ParseResult::NoMatch(tok) => ParseResult::NoMatch(tok),
             }
-            ParseResult::NoMatch(tok) => ParseResult::NoMatch(tok),
-        });
+        };
 
         self.parsers
             .entry(priority)
@@ -41,7 +43,7 @@ impl WordParser {
             .push(constructor);
     }
 
-    pub fn parse(&self, token: impl Into<Token>) -> Words {
+    pub fn parse(&self, token: impl Into<Token>, ctx: &mut C) -> Words<C> {
         let token = token.into();
         let mut words = Vec::with_capacity(10);
         let mut to_parse = vec![token];
@@ -51,18 +53,18 @@ impl WordParser {
             for priority in Priority::list() {
                 if let Some(constructors) = self.parsers.get(&priority) {
                     for constructor in constructors {
-                        match constructor(current.clone()) {
+                        match constructor(current.clone(), ctx) {
                             ParseResult::Matched(word) => {
                                 current_words.push(word);
                                 break;
                             }
                             ParseResult::Partial(pre, word, post) => {
                                 if let Some(pre) = pre {
-                                    current_words.extend(self.parse(pre).0);
+                                    current_words.extend(self.parse(pre, ctx).0);
                                 }
                                 current_words.push(word);
                                 if let Some(post) = post {
-                                    current_words.extend(self.parse(post).0);
+                                    current_words.extend(self.parse(post, ctx).0);
                                 }
                                 break;
                             }
@@ -85,21 +87,20 @@ impl WordParser {
 #[cfg(test)]
 mod words_parsing {
     use crate::{
-        WordParser,
-        default_words::{Exclamation, QuestionMark},
+        EmptyContext, WordParser, default_words::{Exclamation, QuestionMark}
     };
 
     #[test]
     fn normal() {
         let parser = WordParser::new();
-        assert_eq!(parser.parse("dis")[0].raw_text(), "dis");
+        assert_eq!(parser.parse("dis", &mut EmptyContext)[0].raw_text(), "dis");
     }
 
     #[test]
     fn normal_with_exclamation() {
         let mut parser = WordParser::new();
         parser.register::<Exclamation>();
-        let res = parser.parse("dis!");
+        let res = parser.parse("dis!", &mut EmptyContext);
         assert_eq!(res[0].raw_text(), "dis");
         assert_eq!(res[1].raw_text(), "!");
     }
@@ -109,7 +110,7 @@ mod words_parsing {
         let mut parser = WordParser::new();
         parser.register::<Exclamation>();
         parser.register::<QuestionMark>();
-        let res = parser.parse("?dis!das");
+        let res = parser.parse("?dis!das", &mut EmptyContext);
         assert_eq!(res[0].raw_text(), "?");
         assert_eq!(res[1].raw_text(), "dis");
         assert_eq!(res[2].raw_text(), "!");

@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display};
 
 use derive_more::Display;
 
-use crate::{ParseResult, Priority, Token, Word};
+use crate::{Context, ParseResult, Priority, Token, Word};
 
 // #[derive(Debug, Display)]
 pub trait Punctuation: Debug + Display + From<Token> {
@@ -13,8 +13,8 @@ pub trait Punctuation: Debug + Display + From<Token> {
 }
 
 // Blanket implementation of Word for all Punctuation types
-impl<P: Punctuation + 'static> Word for P {
-    fn try_from_token(mut token: Token) -> ParseResult<Self>
+impl<P: Punctuation + 'static, C: Context> Word<C> for P {
+    fn try_from_token(mut token: Token, _ctx: &mut C) -> ParseResult<Self>
     where
         Self: Sized,
     {
@@ -100,12 +100,12 @@ impl From<Token> for QuestionMark {
 
 #[cfg(test)]
 mod punctuation_parsing {
-    use crate::{ParseResult, Token, Word, default_words::Exclamation};
+    use crate::{EmptyContext, ParseResult, Token, Word, default_words::Exclamation};
 
     #[test]
     fn right_exclamation() {
-        if let ParseResult::Matched(mark) = Exclamation::try_from_token(Token::new("!")) {
-            assert_eq!(mark.raw_text(), "!");
+        if let ParseResult::Matched(mark) = Exclamation::try_from_token(Token::new("!"), &mut EmptyContext) {
+            assert_eq!(<Exclamation as Word<EmptyContext>>::raw_text(&mark), "!");
         } else {
             panic!()
         }
@@ -114,9 +114,9 @@ mod punctuation_parsing {
     #[test]
     fn first_part_right_exclamation() {
         if let ParseResult::Partial(Some(dis), mark, None) =
-            Exclamation::try_from_token(Token::new("dis!"))
+            Exclamation::try_from_token(Token::new("dis!"), &mut EmptyContext)
         {
-            assert_eq!(mark.raw_text(), "!", "Mark is not `!`");
+            assert_eq!(<Exclamation as Word<EmptyContext>>::raw_text(&mark), "!", "Mark is not `!`");
             assert_eq!(dis.as_str(), "dis", "Rest is not `dis`");
         } else {
             panic!()
@@ -126,9 +126,9 @@ mod punctuation_parsing {
     #[test]
     fn second_part_right_exclamation() {
         if let ParseResult::Partial(None, mark, Some(dis)) =
-            Exclamation::try_from_token(Token::new("!dis"))
+            Exclamation::try_from_token(Token::new("!dis"), &mut EmptyContext)
         {
-            assert_eq!(mark.raw_text(), "!", "Mark is not `!`");
+            assert_eq!(<Exclamation as Word<EmptyContext>>::raw_text(&mark), "!", "Mark is not `!`");
             assert_eq!(dis.as_str(), "dis", "Rest is not `dis`");
         } else {
             panic!()
@@ -138,9 +138,9 @@ mod punctuation_parsing {
     #[test]
     fn both_part_right_exclamation() {
         if let ParseResult::Partial(Some(dis), mark, Some(dis2)) =
-            Exclamation::try_from_token(Token::new("dis!dis2"))
+            Exclamation::try_from_token(Token::new("dis!dis2"), &mut EmptyContext)
         {
-            assert_eq!(mark.raw_text(), "!", "Mark is not `!`");
+            assert_eq!(<Exclamation as Word<EmptyContext>>::raw_text(&mark), "!", "Mark is not `!`");
             assert_eq!(dis.as_str(), "dis", "Rest is not `dis`");
             assert_eq!(dis2.as_str(), "dis2", "Rest is not `dis`");
         } else {
@@ -151,7 +151,7 @@ mod punctuation_parsing {
     #[test]
     fn no_match_exclamation() {
         assert!(matches!(
-            Exclamation::try_from_token(Token::new("dis")),
+            Exclamation::try_from_token(Token::new("dis"), &mut EmptyContext),
             ParseResult::NoMatch(_token)
         ))
     }

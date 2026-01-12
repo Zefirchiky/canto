@@ -1,13 +1,13 @@
-use std::fmt::{Debug, Display};
+use std::{fmt::{Debug, Display}};
 
 use derive_more::{Deref, DerefMut, Display, From};
 
-use crate::{ParseResult, Priority, Token};
+use crate::{Context, EmptyContext, ParseResult, Priority, Token};
 
 #[derive(Debug, Default, Deref, DerefMut, From)]
-pub struct Words(pub Vec<Box<dyn Word>>);
+pub struct Words<C: Context = EmptyContext>(pub Vec<Box<dyn Word<C>>>);
 
-pub trait Word: Debug + Display {
+pub trait Word<C: Context = EmptyContext>: Debug + Display {
     /// Can word be multi-token?
     fn is_multi_token() -> bool
     where
@@ -16,7 +16,7 @@ pub trait Word: Debug + Display {
         false
     }
 
-    fn try_from_token(token: Token) -> ParseResult<Self>
+    fn try_from_token(token: Token, _ctx: &mut C) -> ParseResult<Self>
     where
         Self: Sized;
 
@@ -46,8 +46,8 @@ impl Normal {
     }
 }
 
-impl Word for Normal {
-    fn try_from_token(token: crate::Token) -> ParseResult<Self>
+impl<C: Context> Word<C> for Normal {
+    fn try_from_token(token: crate::Token, _ctx: &mut C) -> ParseResult<Self>
     where
         Self: Sized,
     {
