@@ -1,13 +1,15 @@
-use std::{borrow::Cow, fmt::{Debug, Display}};
+use std::{borrow::Cow, fmt::Debug};
 
-use derive_more::{Deref, DerefMut, Display, From};
+use derive_more::{Deref, DerefMut, From};
 
 use crate::{Context, EmptyContext, ParseResult, Priority, Token};
+
+pub trait WordId: Debug {}
 
 #[derive(Debug, Default, Deref, DerefMut, From)]
 pub struct Words<C: Context = EmptyContext>(pub Vec<Box<dyn Word<C>>>);
 
-pub trait Word<C: Context = EmptyContext>: Debug + Display {
+pub trait Word<C: Context = EmptyContext>: Debug {
     /// Can word be multi-token?
     fn is_multi_token() -> bool
     where
@@ -31,7 +33,8 @@ pub trait Word<C: Context = EmptyContext>: Debug + Display {
         Priority::Mid
     }
 
-    fn raw_text(&self) -> Cow<'_, str>;
+    fn raw_text(&self, _ctx: &mut C) -> Cow<'_, str>;
+    fn text(&self, _ctx: &mut C) -> Cow<'_, str>;
 }
 
 pub trait FallbackWord<C: Context = EmptyContext>: Word<C> {
@@ -40,16 +43,18 @@ pub trait FallbackWord<C: Context = EmptyContext>: Word<C> {
         Self: Sized;
 }
 
-/// The fallback
-#[derive(Debug, Display)]
-pub struct Normal {
-    text: String,
+#[derive(Debug)]
+pub enum NormalWordId {
+    Correct(spel_right::WordId),
+    Incorrect(String),  // FIXME: Should be Uuid to arena
 }
 
-impl Normal {
-    pub fn new(tok: impl Into<String>) -> Self {
-        Self { text: tok.into() }
-    }
+impl WordId for NormalWordId {}
+
+/// The fallback
+#[derive(Debug)]
+pub struct Normal {
+    id: NormalWordId,
 }
 
 impl<C: Context> Word<C> for Normal {
@@ -65,18 +70,41 @@ impl<C: Context> Word<C> for Normal {
         Priority::Lowest
     }
 
-    fn raw_text(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.text)
+    fn raw_text(&self, ctx: &mut C) -> Cow<'_, str> {
+        match &self.id {
+            NormalWordId::Correct(id) => Cow::Owned(match ctx.get_canto_context().spell_checker.get(*id) {
+                Some(word) => word.to_string(),
+                None => "".into(),
+            }),
+            NormalWordId::Incorrect(word) => Cow::Borrowed(&word)
+        }
+    }
+        
+    fn text(&self, ctx: &mut C) -> Cow<'_, str> {
+        match &self.id {
+            NormalWordId::Correct(id) => Cow::Owned(match ctx.get_canto_context().spell_checker.get(*id) {  // FIXME: Need to deal with lifetimes, to not copy the &str
+                Some(word) => word.to_string(),
+                None => "".into(),
+            }),
+            NormalWordId::Incorrect(word) => Cow::Borrowed(&word)
+        }
     }
 }
 
 impl<C: Context> FallbackWord<C> for Normal {
-    fn from_token(token: crate::Token, _ctx: &mut C) -> Self
+    fn from_token(token: crate::Token, ctx: &mut C) -> Self
     where
         Self: Sized,
     {
-        Self {
-            text: token.to_string(),
+        let canto = ctx.get_canto_context();
+        if let Some(id) = canto.spell_checker.find(&token) {
+            Self {
+                id: NormalWordId::Correct(id),
+            }
+        } else {
+            Self {
+                id: NormalWordId::Incorrect(token.to_string())
+            }
         }
     }
 }

@@ -54,6 +54,8 @@ impl<C: Context, F: FallbackWord<C>> WordParser<C, F> {
         let mut words = Vec::with_capacity(10);
         let mut to_parse = vec![token];
 
+
+
         while let Some(current) = to_parse.pop() {
             let mut current_words = Vec::new();
             for priority in Priority::list() {
@@ -99,16 +101,17 @@ mod words_parsing {
     #[test]
     fn normal() {
         let parser: WordParser = WordParser::new();
-        assert_eq!(parser.parse("dis", &mut EmptyContext)[0].raw_text(), "dis");
+        assert_eq!(parser.parse("dis", &mut EmptyContext::default())[0].raw_text(&mut EmptyContext::default()), "dis");
     }
 
     #[test]
     fn normal_with_exclamation() {
         let mut parser: WordParser = WordParser::new();
         parser.register::<Exclamation>();
-        let res = parser.parse("dis!", &mut EmptyContext);
-        assert_eq!(res[0].raw_text(), "dis");
-        assert_eq!(res[1].raw_text(), "!");
+        let mut ctx = EmptyContext::default();
+        let res = parser.parse("dis!", &mut ctx);
+        assert_eq!(res[0].raw_text(&mut ctx), "dis");
+        assert_eq!(res[1].raw_text(&mut ctx), "!");
     }
 
     #[test]
@@ -116,10 +119,11 @@ mod words_parsing {
         let mut parser: WordParser = WordParser::new();
         parser.register::<Exclamation>();
         parser.register::<QuestionMark>();
-        let res = parser.parse("?dis!das", &mut EmptyContext);
-        assert_eq!(res[0].raw_text(), "?");
-        assert_eq!(res[1].raw_text(), "dis");
-        assert_eq!(res[2].raw_text(), "!");
-        assert_eq!(res[3].raw_text(), "das");
+        let mut ctx = EmptyContext::default();
+        let res = parser.parse("?dis!das", &mut ctx);
+        assert_eq!(res[0].raw_text(&mut ctx), "?");
+        assert_eq!(res[1].raw_text(&mut ctx), "dis");
+        assert_eq!(res[2].raw_text(&mut ctx), "!");
+        assert_eq!(res[3].raw_text(&mut ctx), "das");
     }
 }
