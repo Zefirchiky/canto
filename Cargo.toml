@@ -2,6 +2,8 @@
 name = "canto-mh"
 version = "0.1.0"
 edition = "2024"
+description = "A lexical text parser"
+license = "LICENSE"
 
 [dependencies]
 derive_more = { version = "2.1.1", features = ["from", "deref", "deref_mut", "debug", "display"] }
