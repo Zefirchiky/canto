@@ -1,14 +1,15 @@
 [package]
-name = "canto"
+name = "canto-mh"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 derive_more = { version = "2.1.1", features = ["from", "deref", "deref_mut", "debug", "display"] }
 fxhash = { version = "0.2.1", optional = true }
+slotmap = { version = "1.1.1", features = ["serde"] }
 spel-right = "0.5.1"
 thiserror = "2.0.17"
-uuid = { version = "1.19.0", features = ["v7", "serde"] }
+uuid = { version = "1.20.0", features = ["v7", "serde"] }
 
 [features]
 default = ["fxhash"]

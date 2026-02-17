@@ -1,4 +1,7 @@
-use std::{borrow::Cow, fmt::{Debug, Display}};
+use std::{
+    borrow::Cow,
+    fmt::{Debug, Display},
+};
 
 use derive_more::Display;
 
@@ -110,7 +113,10 @@ mod punctuation_parsing {
     fn right_exclamation() {
         let mut ctx = EmptyContext::default();
         if let ParseResult::Matched(mark) = Exclamation::try_from_token(Token::new("!"), &mut ctx) {
-            assert_eq!(<Exclamation as Word<EmptyContext>>::raw_text(&mark, &mut ctx), "!");
+            assert_eq!(
+                <Exclamation as Word<EmptyContext>>::raw_text(&mark, &mut ctx),
+                "!"
+            );
         } else {
             panic!()
         }
@@ -122,7 +128,11 @@ mod punctuation_parsing {
         if let ParseResult::Partial(Some(dis), mark, None) =
             Exclamation::try_from_token(Token::new("dis!"), &mut ctx)
         {
-            assert_eq!(<Exclamation as Word<EmptyContext>>::raw_text(&mark, &mut ctx), "!", "Mark is not `!`");
+            assert_eq!(
+                <Exclamation as Word<EmptyContext>>::raw_text(&mark, &mut ctx),
+                "!",
+                "Mark is not `!`"
+            );
             assert_eq!(dis.as_str(), "dis", "Rest is not `dis`");
         } else {
             panic!()
@@ -135,7 +145,11 @@ mod punctuation_parsing {
         if let ParseResult::Partial(None, mark, Some(dis)) =
             Exclamation::try_from_token(Token::new("!dis"), &mut ctx)
         {
-            assert_eq!(<Exclamation as Word<EmptyContext>>::raw_text(&mark, &mut ctx), "!", "Mark is not `!`");
+            assert_eq!(
+                <Exclamation as Word<EmptyContext>>::raw_text(&mark, &mut ctx),
+                "!",
+                "Mark is not `!`"
+            );
             assert_eq!(dis.as_str(), "dis", "Rest is not `dis`");
         } else {
             panic!()
@@ -148,7 +162,11 @@ mod punctuation_parsing {
         if let ParseResult::Partial(Some(dis), mark, Some(dis2)) =
             Exclamation::try_from_token(Token::new("dis!dis2"), &mut ctx)
         {
-            assert_eq!(<Exclamation as Word<EmptyContext>>::raw_text(&mark, &mut ctx), "!", "Mark is not `!`");
+            assert_eq!(
+                <Exclamation as Word<EmptyContext>>::raw_text(&mark, &mut ctx),
+                "!",
+                "Mark is not `!`"
+            );
             assert_eq!(dis.as_str(), "dis", "Rest is not `dis`");
             assert_eq!(dis2.as_str(), "dis2", "Rest is not `dis`");
         } else {

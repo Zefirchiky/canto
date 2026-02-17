@@ -13,7 +13,7 @@ pub struct Paragraph<C: Context = EmptyContext> {
 impl Paragraph {
     pub fn new() -> Paragraph {
         Self {
-            elements: Words::default()
+            elements: Words::default(),
         }
     }
 }

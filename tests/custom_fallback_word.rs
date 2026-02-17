@@ -1,22 +1,22 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, rc::Rc};
 
-use canto::{CantoContext, Context, FallbackWord, Word, WordParser};
+use canto_mh::{CantoContext, Context, FallbackWord, Word, WordParser};
 use derive_more::Display;
 
 #[derive(Debug, Default)]
 struct BannedWordsContext {
-    canto_context: CantoContext,
+    canto_context: Rc<CantoContext>,
     pub words: Vec<String>,
 }
 
 impl Context for BannedWordsContext {
-    fn get_canto_context(&self) -> &CantoContext {
-        &self.canto_context
+    fn get_canto_context(&self) -> Rc<CantoContext> {
+        self.canto_context.clone()
     }
 
-    fn get_mut_canto_context(&mut self) -> &mut CantoContext {
-        &mut self.canto_context
-    }
+    // fn get_mut_canto_context(&mut self) -> &mut CantoContext {
+    //     &mut self.canto_context
+    // }
 }
 
 #[derive(Debug, Display, Default)]
@@ -25,10 +25,11 @@ struct SfwWord {
 }
 
 impl Word<BannedWordsContext> for SfwWord {
-    fn try_from_token(token: canto::Token, ctx: &mut BannedWordsContext) -> canto::ParseResult<Self>
-        where
-            Self: Sized {
-        canto::ParseResult::Matched(Self::from_token(token, ctx))
+    fn try_from_token(token: canto_mh::Token, ctx: &mut BannedWordsContext) -> canto_mh::ParseResult<Self>
+    where
+        Self: Sized,
+    {
+        canto_mh::ParseResult::Matched(Self::from_token(token, ctx))
     }
 
     fn raw_text(&self, _ctx: &mut BannedWordsContext) -> Cow<'_, str> {
@@ -41,17 +42,14 @@ impl Word<BannedWordsContext> for SfwWord {
 }
 
 impl FallbackWord<BannedWordsContext> for SfwWord {
-    fn from_token(token: canto::Token, ctx: &mut BannedWordsContext) -> Self
-        where
-            Self: Sized {
+    fn from_token(token: canto_mh::Token, ctx: &mut BannedWordsContext) -> Self
+    where
+        Self: Sized,
+    {
         if ctx.words.contains(&token) {
-            Self {
-                text: "".into()
-            }
+            Self { text: "".into() }
         } else {
-            Self {
-                text: token.to_string()
-            }
+            Self { text: token.into() }
         }
     }
 }
